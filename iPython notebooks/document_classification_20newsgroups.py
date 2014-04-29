@@ -9,7 +9,7 @@ from __future__ import print_function
 
 import logging
 import numpy as np
-from optparse import OptionParser
+from optparse import OptionParser		#import a better library for parsing options
 import sys
 from time import time
 import pylab as pl
@@ -33,7 +33,7 @@ from sklearn import metrics
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s')
 
-
+# Use the OptionaParser function to build both a help screen and use to parse any option flags passed in from the command line
 op = OptionParser()
 op.add_option("--report",
               action="store_true", dest="print_report",
@@ -62,51 +62,57 @@ op.add_option("--filtered",
               help="Remove newsgroup information that is easily overfit: "
                    "headers, signatures, and quoting.")
 
-(opts, args) = op.parse_args()
-if len(args) > 0:
+(opts, args) = op.parse_args()   # pair the options possible above with any arguments passed to it from the command line
+if len(args) > 0:				 # but you shouldnt have any arguments, so halt the whole script
     op.error("this script takes no arguments.")
     sys.exit(1)
 
-print(__doc__)
-op.print_help()
+print(__doc__)			# print the docstring (right now it is None)
+op.print_help()			# print to console the help screen
 print()
 
 
-if opts.all_categories:
-    categories = None
+if opts.all_categories:			# if the option --all_categories was used...
+    categories = None 			# set None
 else:
-    categories = [
+    categories = [				# otherwise use the following 4 categories:
         'alt.atheism',
         'talk.religion.misc',
         'comp.graphics',
         'sci.space',
     ]
 
-if opts.filtered:
-    remove = ('headers', 'footers', 'quotes')
+if opts.filtered:			# if the option --filtered was used
+    remove = ('headers', 'footers', 'quotes')   # set a list of things to remove
 else:
-    remove = ()
+    remove = ()									# otherwise, dont.
 
 print("Loading 20 newsgroups dataset for categories:")
-print(categories if categories else "all")
+print(categories if categories else "all")		# print out the container of categories
 
+# Now grab the selected categories using the fn from sklearn.datasets  (imported at the top)
 data_train = fetch_20newsgroups(subset='train', categories=categories,
                                 shuffle=True, random_state=42,
                                 remove=remove)
-
+# This fn already has a concept of test vs train, so now load the test:
+# This may also return some Warnings or INFO about the download and decompression
 data_test = fetch_20newsgroups(subset='test', categories=categories,
                                shuffle=True, random_state=42,
                                remove=remove)
+# Tell when succeeded
 print('data loaded')
 
 
 
 def size_mb(docs):
+    """ Returns the sum of the data size of 'docs' in megabytes """
     return sum(len(s.encode('utf-8')) for s in docs) / 1e6
 
+# Now remember the size_mb of train and test
 data_train_size_mb = size_mb(data_train.data)
 data_test_size_mb = size_mb(data_test.data)
 
+# Print a report of the number of files, and the size_mb of each of train and test
 print("%d documents - %0.3fMB (training set)" % (
     len(data_train.data), data_train_size_mb))
 print("%d documents - %0.3fMB (test set)" % (
@@ -114,8 +120,11 @@ print("%d documents - %0.3fMB (test set)" % (
 print("%d categories" % len(categories))
 print()
 
+# Assign the labels for the new train/test split
 y_train, y_test = data_train.target, data_test.target
 
+
+# Based on whether the hashing option was chosen, chooses whether to use a Hashing or Tfidf Vectorizer
 print("Extracting features from the training dataset using a sparse vectorizer")
 t0 = time()
 if opts.use_hashing:
@@ -127,6 +136,8 @@ else:
                                  stop_words='english')
     X_train = vectorizer.fit_transform(data_train.data)
 duration = time() - t0
+
+# Measures and prints the time it takes to extract features from the training set
 print("done in %fs at %0.3fMB/s" % (duration, data_train_size_mb / duration))
 print("n_samples: %d, n_features: %d" % X_train.shape)
 print()
@@ -135,10 +146,13 @@ print("Extracting features from the test dataset using the same vectorizer")
 t0 = time()
 X_test = vectorizer.transform(data_test.data)
 duration = time() - t0
+
+# Measures and prints the time it takes to extract features from the test set
 print("done in %fs at %0.3fMB/s" % (duration, data_test_size_mb / duration))
 print("n_samples: %d, n_features: %d" % X_test.shape)
 print()
 
+# If the Chi2 option is selected, this calculates the Chi2 and displays how long it took to complete
 if opts.select_chi2:
     print("Extracting %d best features by a chi-squared test" %
           opts.select_chi2)
@@ -149,15 +163,16 @@ if opts.select_chi2:
     print("done in %fs" % (time() - t0))
     print()
 
-
+# Defines the trim method so our strings fit on the terminal
 def trim(s):
     """Trim string to fit on terminal (assuming 80-column display)"""
     return s if len(s) <= 80 else s[:77] + "..."
 
-
+# Reads the feature names if the use_hashing option is turned off
 if opts.use_hashing:
     feature_names = None
 else:
+	# return and store the tfidf get_feature_names in a numpyarray, and pass this on to Group 2!
     feature_names = np.asarray(vectorizer.get_feature_names())
 
 # GROUP 2: start
